@@ -197,6 +197,14 @@ class MainWindow(QMainWindow):
             self.undo_stack.clear() # 为新台站清空撤销栈
             self.clear_zoom_windows()
             if self.current_stream:
+                # 检查是否有来自SAC头文件的P波到时
+                z_trace = self.current_stream.select(component="Z")
+                if z_trace:
+                    p_arrival = get_p_arrival_time(z_trace[0])
+                    # 如果SAC头文件中有有效的P波到时，添加到picks中
+                    if p_arrival != -12345.0:
+                        self.current_picks['p_arrival'] = p_arrival
+                
                 self.main_plot_widget.plot_stream(self.current_stream)
                 self.display_pick_results(self.current_picks)
                 self.main_plot_widget.plot_picks(self.current_picks)

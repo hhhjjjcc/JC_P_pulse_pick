@@ -14,16 +14,29 @@ class DataLoader:
     def scan_files(self):
         """
         Scans the directory and organizes SAC files by event and station.
+        It finds Z-component files ending in *Z.SAC or *Z.
         """
         for event_dir in os.listdir(self.base_dir):
             event_path = os.path.join(self.base_dir, event_dir)
             if os.path.isdir(event_path):
                 self.events[event_dir] = {}
                 for sac_file in os.listdir(event_path):
-                    if sac_file.upper().endswith("Z.SAC"): # 只查找Z分量
-                        parts = sac_file.split('.')
-                        station = ".".join(parts[0:2])
-                        component = parts[2]
+                    full_path = os.path.join(event_path, sac_file)
+                    if not os.path.isfile(full_path):
+                        continue
+
+                    # Unified handling for file names like 'NET.STA.COMP.SAC' or 'NET.STA.COMP'
+                    sac_file_upper = sac_file.upper()
+                    if sac_file_upper.endswith('.SAC'):
+                        file_name_no_ext = sac_file[:-4]
+                    else:
+                        file_name_no_ext = sac_file
+
+                    parts = file_name_no_ext.split('.')
+                    
+                    if len(parts) >= 3 and parts[-1].upper().endswith('Z'):
+                        station = ".".join(parts[:-1])
+                        component = parts[-1]
                         if station not in self.events[event_dir]:
                             self.events[event_dir][station] = {}
                         self.events[event_dir][station][component] = os.path.join(event_path, sac_file)
@@ -58,9 +71,9 @@ def get_p_arrival_time(trace: Trace) -> float:
         p_time = -12345.0
         
         if 't1' in sac_header and sac_header['t1'] != -12345:
-            p_time = sac_header['t1']
+            p_time = sac_header['t1'] - sac_header['b']
         elif 't3' in sac_header and sac_header['t3'] != -12345:
-            p_time = sac_header['t3']
+            p_time = sac_header['t3'] - sac_header['b']
             
         return p_time
     return -12345.0
